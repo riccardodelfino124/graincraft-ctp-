@@ -1,75 +1,89 @@
-# React + TypeScript + Vite
+# GrainCraft CTP
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Capable-to-Promise application for GrainCraft Foods. It answers when a complete requested quantity can realistically be delivered, which sourcing strategy should be used, and what procurement cost and projected margin result.
 
-Currently, two official plugins are available:
+## Stack
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- React, TypeScript, Vite
+- React Router, TanStack Query, React Hook Form, Zod
+- Supabase Auth, PostgreSQL, RLS, RPC functions, Edge Functions
+- Vitest and React Testing Library
 
-## React Compiler
+## Setup
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
+```bash
+npm install
+cp .env.example .env.local
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Fill `.env.local` with:
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_PUBLISHABLE_KEY`
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+Do not commit `.env.local`.
 
+## Development
+
+```bash
+npm run dev
 ```
+
+## Build
+
+```bash
+npm run build
+```
+
+## Tests
+
+```bash
+npm run test
+```
+
+## Supabase
+
+Inspect migration state:
+
+```bash
+npx.cmd supabase migration list
+```
+
+Preview database changes:
+
+```bash
+npx.cmd supabase db push --dry-run
+```
+
+Apply approved additive migrations:
+
+```bash
+npx.cmd supabase db push
+```
+
+Deploy the AI recommendation Edge Function:
+
+```bash
+npx.cmd supabase functions deploy ctp-recommendation
+```
+
+## Demo Flow
+
+1. Create and promote the first admin user as described in `AUTH_SETUP.md`.
+2. Sign in.
+3. Open New Quote.
+4. Select a customer, material, quantity, and selling price.
+5. Calculate delivery promise.
+6. Review deterministic options and confirm the recommended option.
+7. Inspect Dashboard, Inventory, Purchase Orders, Commitments, and Decision History.
+
+## Documentation
+
+- `ARCHITECTURE.md`
+- `DATA_DICTIONARY.md`
+- `ASSUMPTIONS.md`
+- `SUPABASE_SETUP.md`
+- `AUTH_SETUP.md`
+- `TEST_SCENARIOS.md`
+- `DEPLOYMENT.md`
+- `CTP_DECISION_LOGIC.md`
