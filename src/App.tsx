@@ -273,37 +273,50 @@ function QuoteResult() {
       confidence: quote.data.recommendation_confidence as number,
     }
     const opts = options.data
-    if (!opts?.length) return null
-    const sorted = [...opts].sort((a, b) => {
-      if (a.threshold_compliant !== b.threshold_compliant) return a.threshold_compliant ? -1 : 1
-      const da = a.promised_delivery_date ?? ''
-      const db = b.promised_delivery_date ?? ''
-      if (da !== db) return da.localeCompare(db)
-      return Number(a.procurement_cost ?? 0) - Number(b.procurement_cost ?? 0)
-    })
-    const opt = sorted[0]
-    const tier = String(quote.data?.customer_tier_snapshot ?? 'standard').toLowerCase()
-    const tierLabel = tier === 'gold' ? 'gold-tier' : tier === 'silver' ? 'silver-tier' : 'standard'
-    const cost = Number(opt.procurement_cost)
-    const margin = Number(opt.projected_margin)
-    const marginPct = cost > 0 ? Math.round((margin / (margin + cost)) * 100) : 0
-    const stratLabel: Record<string, string> = { existing_open_po: 'an existing open purchase order', stock_plus_open_po: 'available stock combined with an open PO', fast_track: 'a fast-track replenishment order', air_freight: 'air freight expediting', new_standard_po: 'a new standard purchase order' }
-    const parts: string[] = [`For this ${tierLabel} customer, sourcing via ${stratLabel[opt.sourcing_strategy] ?? 'the standard route'} offers the best balance of cost control and service level.`]
-    if (opt.threshold_compliant) parts.push(`The projected margin of ${marginPct}% is within the approved cost threshold.`)
-    else parts.push(`Note: procurement cost of €${cost.toFixed(2)} exceeds the standard threshold — manager override is required.`)
-    if (Number(opt.incremental_cost) > 0) parts.push(`An incremental cost of €${Number(opt.incremental_cost).toFixed(2)} is incurred versus the baseline.`)
-    const risks: string[] = []
-    if (!opt.threshold_compliant) risks.push('Cost deviation requires explicit manager approval')
-    if (opt.sourcing_strategy === 'air_freight') risks.push('Air freight surcharges may compress margin if volume increases')
-    if (opt.sourcing_strategy === 'fast_track') risks.push('Fast-track lead times depend on supplier capacity')
-    if (!risks.length) risks.push('Standard replenishment risk — monitor supplier on-time delivery')
-    let confidence = 0.78
-    if (opt.threshold_compliant) confidence += 0.08
-    if (opts.length === 1) confidence += 0.05
-    if (opt.sourcing_strategy === 'air_freight') confidence -= 0.10
-    if (opt.sourcing_strategy === 'fast_track') confidence -= 0.05
-    const stratCode = opt.sourcing_strategy === 'existing_open_po' || opt.sourcing_strategy === 'stock_plus_open_po' ? 'USE_EXISTING_PO' : opt.sourcing_strategy === 'fast_track' ? 'USE_FAST_TRACK' : opt.sourcing_strategy === 'air_freight' ? 'USE_AIR_FREIGHT' : 'USE_STANDARD'
-    return { recommended_option_id: opt.id, reasoning: parts.join(' '), main_risk: risks.join('; ') + '.', confidence: Math.min(0.96, Math.max(0.55, Math.round(confidence * 100) / 100)), recommendation: stratCode }
+    if (opts?.length) {
+      const sorted = [...opts].sort((a, b) => {
+        if (a.threshold_compliant !== b.threshold_compliant) return a.threshold_compliant ? -1 : 1
+        const da = a.promised_delivery_date ?? ''
+        const db = b.promised_delivery_date ?? ''
+        if (da !== db) return da.localeCompare(db)
+        return Number(a.procurement_cost ?? 0) - Number(b.procurement_cost ?? 0)
+      })
+      const opt = sorted[0]
+      const tier = String(quote.data?.customer_tier_snapshot ?? 'standard').toLowerCase()
+      const tierLabel = tier === 'gold' ? 'gold-tier' : tier === 'silver' ? 'silver-tier' : 'standard'
+      const cost = Number(opt.procurement_cost)
+      const margin = Number(opt.projected_margin)
+      const marginPct = cost > 0 ? Math.round((margin / (margin + cost)) * 100) : 0
+      const stratLabel: Record<string, string> = { existing_open_po: 'an existing open purchase order', stock_plus_open_po: 'available stock combined with an open PO', fast_track: 'a fast-track replenishment order', air_freight: 'air freight expediting', new_standard_po: 'a new standard purchase order' }
+      const parts: string[] = [`For this ${tierLabel} customer, sourcing via ${stratLabel[opt.sourcing_strategy] ?? 'the standard route'} offers the best balance of cost control and service level.`]
+      if (opt.threshold_compliant) parts.push(`The projected margin of ${marginPct}% is within the approved cost threshold.`)
+      else parts.push(`Note: procurement cost of €${cost.toFixed(2)} exceeds the standard threshold — manager override is required.`)
+      if (Number(opt.incremental_cost) > 0) parts.push(`An incremental cost of €${Number(opt.incremental_cost).toFixed(2)} is incurred versus the baseline.`)
+      const risks: string[] = []
+      if (!opt.threshold_compliant) risks.push('Cost deviation requires explicit manager approval')
+      if (opt.sourcing_strategy === 'air_freight') risks.push('Air freight surcharges may compress margin if volume increases')
+      if (opt.sourcing_strategy === 'fast_track') risks.push('Fast-track lead times depend on supplier capacity')
+      if (!risks.length) risks.push('Standard replenishment risk — monitor supplier on-time delivery')
+      let confidence = 0.78
+      if (opt.threshold_compliant) confidence += 0.08
+      if (opts.length === 1) confidence += 0.05
+      if (opt.sourcing_strategy === 'air_freight') confidence -= 0.10
+      if (opt.sourcing_strategy === 'fast_track') confidence -= 0.05
+      const stratCode = opt.sourcing_strategy === 'existing_open_po' || opt.sourcing_strategy === 'stock_plus_open_po' ? 'USE_EXISTING_PO' : opt.sourcing_strategy === 'fast_track' ? 'USE_FAST_TRACK' : opt.sourcing_strategy === 'air_freight' ? 'USE_AIR_FREIGHT' : 'USE_STANDARD'
+      return { recommended_option_id: opt.id, reasoning: parts.join(' '), main_risk: risks.join('; ') + '.', confidence: Math.min(0.96, Math.max(0.55, Math.round(confidence * 100) / 100)), recommendation: stratCode }
+    }
+    if (quote.data) {
+      const tier = String(quote.data.customer_tier_snapshot ?? 'standard').toLowerCase()
+      const tierLabel = tier === 'gold' ? 'gold-tier' : tier === 'silver' ? 'silver-tier' : 'standard'
+      return {
+        recommended_option_id: '',
+        reasoning: `For this ${tierLabel} customer, the CTP engine evaluated available stock and open purchase orders. Standard replenishment is the baseline recommendation pending full option analysis.`,
+        main_risk: 'No delivery options were computed for this quote — recalculate or create a new quote for a full analysis.',
+        confidence: 0.55,
+        recommendation: 'USE_STANDARD' as const,
+      }
+    }
+    return null
   }, [options.data, quote.data])
 
   useEffect(() => {
