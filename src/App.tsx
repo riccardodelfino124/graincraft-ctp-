@@ -297,7 +297,7 @@ function QuoteResult() {
         },
       })
       if (error || !data?.recommended_option_id) throw new Error('Recommendation unavailable')
-      void supabase.rpc('persist_quote_recommendation', {
+      await supabase.rpc('persist_quote_recommendation', {
         p_quote_request_id: quote.data!.id,
         p_recommended_option_id: data.recommended_option_id,
         p_source: 'llm',
@@ -306,6 +306,7 @@ function QuoteResult() {
         p_main_risk: data.main_risk,
         p_confidence: data.confidence,
       })
+      await queryClient.invalidateQueries({ queryKey: ['quote', id] })
       return data
     },
   })
