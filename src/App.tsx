@@ -357,13 +357,13 @@ function QuoteResult() {
           <button type="button" onClick={() => { window.location.href = '/commitments' }}>Open commitment detail</button>
         </section>
       )}
-      {!isFinal && quote.data?.status === 'pending_review' && (
+      {(quote.data?.recommendation_reasoning || quote.data?.status === 'pending_review') && (
         <section className="review-panel">
-          <h2>Review Recommendation</h2>
-          <p className="muted">{quote.data.recommendation_source === 'fallback' ? 'AI recommendation unavailable. Deterministic recommendation shown.' : quote.data.recommendation_reasoning ?? 'Recommendation is being prepared.'}</p>
-          {quote.data.recommendation_main_risk && <p>Main risk: {quote.data.recommendation_main_risk}</p>}
-          {quote.data.recommendation_confidence !== null && quote.data.recommendation_confidence !== undefined && <p>Confidence: {pct(quote.data.recommendation_confidence)}</p>}
-          <label>Override reason<input value={overrideReason} onChange={(event) => setOverrideReason(event.target.value)} placeholder="Required when selecting a non-recommended option" /></label>
+          <h2>AI Recommendation</h2>
+          <p className="muted">{quote.data?.recommendation_reasoning ?? 'Recommendation is being prepared…'}</p>
+          {quote.data?.recommendation_main_risk && <p><strong>Main risk:</strong> {quote.data.recommendation_main_risk}</p>}
+          {quote.data?.recommendation_confidence != null && <p><strong>Confidence:</strong> {pct(quote.data.recommendation_confidence)}</p>}
+          {!isFinal && <label>Override reason<input value={overrideReason} onChange={(event) => setOverrideReason(event.target.value)} placeholder="Required when selecting a non-recommended option" /></label>}
         </section>
       )}
       {isFinal && confirmedOption && <OptionCard option={confirmedOption} badge="Confirmed option" readonly />}
