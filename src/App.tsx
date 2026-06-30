@@ -237,24 +237,9 @@ function QuoteResult() {
   const commitments = useQuery({ queryKey: ['quote-commitments', id], queryFn: async () => (await supabase.from('commitments').select('*').eq('quote_request_id', id).order('confirmed_at', { ascending: false })).data as AnyRow[] })
   const atp = useQuery({ queryKey: ['atp'], queryFn: () => rows<AnyRow>('current_item_atp') })
   const pos = useQuery({ queryKey: ['purchase-orders'], queryFn: () => rows<AnyRow>('open_po_availability') })
-  const settings = useQuery({ queryKey: ['settings'], queryFn: () => rows<AnyRow>('system_settings') })
-  const customerHistory = useQuery({
-    queryKey: ['customer-history', quote.data?.customer_id],
-    enabled: Boolean(quote.data?.customer_id && quote.data.status === 'pending_review'),
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('orders_history')
-        .select('quantity, unit_price_charged, actual_delivery_date, promised_date, expedite_used')
-        .eq('customer_id', quote.data!.customer_id)
-      if (error) throw error
-      return data as Array<{ quantity: number | null; unit_price_charged: number | null; actual_delivery_date: string | null; promised_date: string | null; expedite_used: boolean | null }>
-    },
-  })
-  const vendorReliability = useQuery({ queryKey: ['vendor-reliability'], queryFn: () => rows<AnyRow>('vendor_reliability') })
   const [selectedOptionId, setSelectedOptionId] = useState<string>('')
   const [overrideReason, setOverrideReason] = useState('')
   const stock = atp.data?.find((row) => row.material === quote.data?.material)
-  const relevantPos = (pos.data ?? []).filter((row) => row.material === quote.data?.material)
   const commitment = commitments.data?.find((row) => ['active', 'delivered'].includes(String(row.status))) ?? commitments.data?.[0]
   const commitmentAllocations = useQuery({
     queryKey: ['quote-commitment-allocations', commitment?.id],
