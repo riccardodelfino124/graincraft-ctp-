@@ -104,10 +104,16 @@ function recommend(options: Option[], payload: Record<string, unknown>): Recomme
   }
 }
 
+const cors = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
 Deno.serve(async (request) => {
-  if (request.method !== 'POST') return new Response('Method not allowed', { status: 405 })
+  if (request.method === 'OPTIONS') return new Response('ok', { headers: cors })
+  if (request.method !== 'POST') return new Response('Method not allowed', { status: 405, headers: cors })
   const payload = await request.json().catch(() => null)
   const options = Array.isArray(payload?.options) ? payload.options as Option[] : []
-  if (options.length === 0) return Response.json({ error: 'No options supplied.' }, { status: 400 })
-  return Response.json(recommend(options, payload))
+  if (options.length === 0) return Response.json({ error: 'No options supplied.' }, { status: 400, headers: cors })
+  return Response.json(recommend(options, payload), { headers: cors })
 })
