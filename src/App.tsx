@@ -355,13 +355,13 @@ function QuoteResult() {
           <button type="button" onClick={() => { window.location.href = '/commitments' }}>Open commitment detail</button>
         </section>
       )}
-      {(aiRec.data || aiRec.isPending || quote.data?.recommendation_reasoning) && (
+      {(aiRec.data || aiRec.isFetching || quote.data?.recommendation_reasoning) && (
         <section className="review-panel">
           <h2>AI Recommendation</h2>
-          {aiRec.isPending && !quote.data?.recommendation_reasoning && <p className="muted">Generating recommendation…</p>}
-          <p className="muted">{aiRec.data?.reasoning ?? quote.data?.recommendation_reasoning ?? ''}</p>
-          {(aiRec.data?.main_risk ?? quote.data?.recommendation_main_risk) && <p><strong>Main risk:</strong> {aiRec.data?.main_risk ?? quote.data?.recommendation_main_risk}</p>}
-          {(aiRec.data?.confidence ?? quote.data?.recommendation_confidence) != null && <p><strong>Confidence:</strong> {pct(aiRec.data?.confidence ?? quote.data?.recommendation_confidence)}</p>}
+          {aiRec.isFetching && <p className="muted">Generating recommendation…</p>}
+          {!aiRec.isFetching && <p className="muted">{aiRec.data?.reasoning ?? quote.data?.recommendation_reasoning ?? ''}</p>}
+          {!aiRec.isFetching && (aiRec.data?.main_risk ?? quote.data?.recommendation_main_risk) && <p><strong>Main risk:</strong> {aiRec.data?.main_risk ?? quote.data?.recommendation_main_risk}</p>}
+          {!aiRec.isFetching && (aiRec.data?.confidence ?? quote.data?.recommendation_confidence) != null && <p><strong>Confidence:</strong> {pct(aiRec.data?.confidence ?? quote.data?.recommendation_confidence)}</p>}
           {!isFinal && <label>Override reason<input value={overrideReason} onChange={(event) => setOverrideReason(event.target.value)} placeholder="Required when selecting a non-recommended option" /></label>}
         </section>
       )}
@@ -382,7 +382,7 @@ function QuoteResult() {
               selected={selectedOptionId === option.id}
               onSelect={() => setSelectedOptionId(option.id)}
               onConfirm={() => confirm.mutate(option)}
-              confirmDisabled={confirm.isPending}
+              confirmDisabled={confirm.isPending || aiRec.isFetching}
             />
           ))}
         </div>
