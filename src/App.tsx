@@ -265,27 +265,26 @@ function QuoteResult() {
   const isFinal = Boolean(commitment?.id && quote.data && finalStatuses.includes(quote.data.status))
   const confirmedOptionId = String(commitment?.quote_option_id ?? '')
 
-  useEffect(() => {
-    if (!quote.data || quote.data.status !== 'pending_review' || quote.data.recommended_option_id || !options.data?.length) return
-    if (customerHistory.status === 'pending' || vendorReliability.status === 'pending') return
-    const llmEnabled = settings.data?.find((row) => row.setting_key === 'llm_recommendation_enabled')?.boolean_value !== false
-    if (!llmEnabled) return
-    void (async () => {
+  const aiRec = useQuery({
+    queryKey: ['ai-rec', id],
+    enabled: Boolean(quote.data?.status === 'pending_review' && options.data?.length),
+    staleTime: Infinity,
+    queryFn: async () => {
+      if (quote.data?.recommendation_reasoning) return {
+        recommended_option_id: quote.data.recommended_option_id,
+        reasoning: quote.data.recommendation_reasoning,
+        main_risk: quote.data.recommendation_main_risk,
+        confidence: quote.data.recommendation_confidence,
+      }
       const history = customerHistory.data ?? []
-      const historicalTotalValue = history.length
-        ? history.reduce((s, r) => s + (Number(r.quantity) || 0) * (Number(r.unit_price_charged) || 0), 0)
-        : null
+      const historicalTotalValue = history.length ? history.reduce((s, r) => s + (Number(r.quantity) || 0) * (Number(r.unit_price_charged) || 0), 0) : null
       const delivered = history.filter(r => r.actual_delivery_date && r.promised_date)
-      const historicalDeliveryPerformance = delivered.length
-        ? delivered.filter(r => r.actual_delivery_date! <= r.promised_date!).length / delivered.length
-        : null
-      const historicalExpediteUsage = history.length
-        ? history.filter(r => r.expedite_used).length / history.length
-        : null
-      const { data } = await supabase.functions.invoke('ctp-recommendation', {
+      const historicalDeliveryPerformance = delivered.length ? delivered.filter(r => r.actual_delivery_date! <= r.promised_date!).length / delivered.length : null
+      const historicalExpediteUsage = history.length ? history.filter(r => r.expedite_used).length / history.length : null
+      const { data, error } = await supabase.functions.invoke('ctp-recommendation', {
         body: {
           quote_request: quote.data,
-          customer_tier: quote.data.customer_tier_snapshot,
+          customer_tier: quote.data?.customer_tier_snapshot,
           historical_customer_order_value: historicalTotalValue,
           historical_delivery_performance: historicalDeliveryPerformance,
           historical_expedite_usage: historicalExpediteUsage,
@@ -294,23 +293,22 @@ function QuoteResult() {
           supplier_reliability: vendorReliability.data ?? null,
           options: options.data,
           thresholds: settings.data,
-          escalation_reason: quote.data.escalation_reason,
+          escalation_reason: quote.data?.escalation_reason,
         },
       })
-      if (!data?.recommended_option_id) return
-      const source = String(data.reasoning ?? '').includes('Deterministic recommendation shown') ? 'fallback' : 'llm'
-      await supabase.rpc('persist_quote_recommendation', {
-        p_quote_request_id: quote.data.id,
+      if (error || !data?.recommended_option_id) throw new Error('Recommendation unavailable')
+      void supabase.rpc('persist_quote_recommendation', {
+        p_quote_request_id: quote.data!.id,
         p_recommended_option_id: data.recommended_option_id,
-        p_source: source,
+        p_source: 'llm',
         p_recommendation: data.recommendation,
         p_reasoning: data.reasoning,
         p_main_risk: data.main_risk,
         p_confidence: data.confidence,
       })
-      await queryClient.invalidateQueries({ queryKey: ['quote', id] })
-    })()
-  }, [id, options.data, queryClient, quote.data, relevantPos, settings.data, stock, customerHistory.status, vendorReliability.status])
+      return data
+    },
+  })
 
   const confirm = useMutation({
     mutationFn: async (option: QuoteOption) => {
@@ -357,12 +355,13 @@ function QuoteResult() {
           <button type="button" onClick={() => { window.location.href = '/commitments' }}>Open commitment detail</button>
         </section>
       )}
-      {(quote.data?.recommendation_reasoning || quote.data?.status === 'pending_review') && (
+      {(aiRec.data || aiRec.isPending || quote.data?.recommendation_reasoning) && (
         <section className="review-panel">
           <h2>AI Recommendation</h2>
-          <p className="muted">{quote.data?.recommendation_reasoning ?? 'Recommendation is being prepared…'}</p>
-          {quote.data?.recommendation_main_risk && <p><strong>Main risk:</strong> {quote.data.recommendation_main_risk}</p>}
-          {quote.data?.recommendation_confidence != null && <p><strong>Confidence:</strong> {pct(quote.data.recommendation_confidence)}</p>}
+          {aiRec.isPending && !quote.data?.recommendation_reasoning && <p className="muted">Generating recommendation…</p>}
+          <p className="muted">{aiRec.data?.reasoning ?? quote.data?.recommendation_reasoning ?? ''}</p>
+          {(aiRec.data?.main_risk ?? quote.data?.recommendation_main_risk) && <p><strong>Main risk:</strong> {aiRec.data?.main_risk ?? quote.data?.recommendation_main_risk}</p>}
+          {(aiRec.data?.confidence ?? quote.data?.recommendation_confidence) != null && <p><strong>Confidence:</strong> {pct(aiRec.data?.confidence ?? quote.data?.recommendation_confidence)}</p>}
           {!isFinal && <label>Override reason<input value={overrideReason} onChange={(event) => setOverrideReason(event.target.value)} placeholder="Required when selecting a non-recommended option" /></label>}
         </section>
       )}
