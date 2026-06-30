@@ -276,8 +276,10 @@ function QuoteResult() {
     if (!opts?.length) return null
     const sorted = [...opts].sort((a, b) => {
       if (a.threshold_compliant !== b.threshold_compliant) return a.threshold_compliant ? -1 : 1
-      if (a.promised_delivery_date !== b.promised_delivery_date) return a.promised_delivery_date.localeCompare(b.promised_delivery_date)
-      return Number(a.procurement_cost) - Number(b.procurement_cost)
+      const da = a.promised_delivery_date ?? ''
+      const db = b.promised_delivery_date ?? ''
+      if (da !== db) return da.localeCompare(db)
+      return Number(a.procurement_cost ?? 0) - Number(b.procurement_cost ?? 0)
     })
     const opt = sorted[0]
     const tier = String(quote.data?.customer_tier_snapshot ?? 'standard').toLowerCase()
@@ -362,15 +364,18 @@ function QuoteResult() {
           <button type="button" onClick={() => { window.location.href = '/commitments' }}>Open commitment detail</button>
         </section>
       )}
-      {aiRec && (
-        <section className="review-panel">
-          <h2>AI Recommendation</h2>
-          <p className="muted">{aiRec.reasoning}</p>
-          {aiRec.main_risk && <p><strong>Main risk:</strong> {aiRec.main_risk}</p>}
-          {aiRec.confidence != null && <p><strong>Confidence:</strong> {pct(aiRec.confidence)}</p>}
-          {!isFinal && <label>Override reason<input value={overrideReason} onChange={(event) => setOverrideReason(event.target.value)} placeholder="Required when selecting a non-recommended option" /></label>}
-        </section>
-      )}
+      <section className="review-panel">
+        <h2>AI Recommendation</h2>
+        {aiRec
+          ? <>
+              <p className="muted">{aiRec.reasoning}</p>
+              {aiRec.main_risk && <p><strong>Main risk:</strong> {aiRec.main_risk}</p>}
+              {aiRec.confidence != null && <p><strong>Confidence:</strong> {pct(aiRec.confidence)}</p>}
+            </>
+          : <p className="muted">Loading recommendation…</p>
+        }
+        {!isFinal && <label>Override reason<input value={overrideReason} onChange={(event) => setOverrideReason(event.target.value)} placeholder="Required when selecting a non-recommended option" /></label>}
+      </section>
       {isFinal && confirmedOption && <OptionCard option={confirmedOption} badge="Confirmed option" readonly />}
       {isFinal && alternatives.length > 0 && (
         <details className="alternatives">
